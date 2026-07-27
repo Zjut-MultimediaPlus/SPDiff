@@ -183,7 +183,7 @@ class MultiTopkDistribution(nn.Module):
         self.sigma_head = nn.Linear(vfdim, group_dim)
 
     def forward(self, k, weights, concept_proj):
-        weights_k, topk_idx = straight_through_topk(weights, k)  # <--- 用新的
+        weights_k, topk_idx = straight_through_topk(weights, k)
         # print("Match cep idx k: ", topk_idx)
 
         z = weights_k @ concept_proj        # [B, vfdim]
@@ -480,9 +480,8 @@ class SPDiff(nn.Module):
         multiConfs_list2 = []
         if klist is None:
             klist = [i + 1 for i in range(config.sample)]
-        # 生成rank区间序列
         chunk_seq = build_chunk_sequence(klist)
-        for i in range(config.sample):  # 采样次数
+        for i in range(config.sample): 
             k = chunk_seq[i]
             esti1, conf1, cep_x1, denoiseObj1, esti2, conf2, cep_x2, denoiseObj2 = self.p_sample_loop(shape1,
                                                                                                       shape2, k=k,
@@ -539,7 +538,6 @@ class SPDiff(nn.Module):
         multi_xgen = []
         multi_xconf = []
         multi_xcep = []
-        # 生成rank区间序列
         chunk_seq = build_chunk_sequence(klist)
         for k_range in chunk_seq:
             cep_mu, cep_sigma = cep2distrF(k_range, weights, concept_proj)
