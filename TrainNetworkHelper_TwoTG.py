@@ -264,7 +264,6 @@ class CondDiffusionTrainer_GroupGrad(TrainerBase):
                 group2_label_mask = data["group2_label_mask"].to(config.device)  # b, 5, 3
 
                 '''Loss for gradient optimization'''
-                # loss_list = model(group1_label, group2_label, group2_label_mask, cond_visual=btemp)
                 loss_list = model(group1_label, group2_label, group2_label_mask, cond_visual=btemp, cond_ratio=pr)
                 shared_params = []
                 # Core network
