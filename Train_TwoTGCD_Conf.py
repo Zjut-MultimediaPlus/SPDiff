@@ -8,7 +8,6 @@ from utils.TwoDenoiseModel import *
 from utils.Diffusion import *
 from TrainNetworkHelper_TwoTG import *
 import matplotlib
-matplotlib.use('Agg')
 import random
 from env.Dataset import *
 
