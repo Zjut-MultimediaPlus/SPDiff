@@ -7,6 +7,21 @@ from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
 
+def rotate_quadrant_labels(labels, filename):
+    """Align NE/SE/SW/NW targets with clockwise image rotation (north up, east right).
+
+    Each quadrant contains R34, R50 and R64. Apply before normalization and
+    mask construction. Scalar intensity targets and historical ratios are invariant.
+    """
+    tag = os.path.splitext(filename)[0].split('_')[-1]
+    if not tag.startswith('rotate'):
+        return labels
+    if tag not in ('rotate90', 'rotate180', 'rotate270'):
+        raise ValueError(f'Unsupported quadrant rotation: {filename}; only 90/180/270 are supported.')
+    steps = int(tag[6:]) // 90
+    quadrants = np.asarray(labels).reshape(4, 3)
+    return np.roll(quadrants, steps, axis=0).reshape(-1).tolist()
+
 def find_previous_hours(time_str, x):
     time_format = "%Y%m%d%H"
     time = datetime.strptime(time_str, time_format)
@@ -144,6 +159,11 @@ class PDTCDataset():
                 r34sw, r50sw, r64sw,
                 r34nw, r50nw, r64nw
             ]
+            labels = rotate_quadrant_labels(labels, filename)
+            (r34ne, r50ne, r64ne,
+             r34se, r50se, r64se,
+             r34sw, r50sw, r64sw,
+             r34nw, r50nw, r64nw) = labels
             mask = [int(v != 0) for v in labels]
             mask = torch.tensor(mask, dtype=torch.long)
 
@@ -413,7 +433,7 @@ def setcd__safe_float(x, default=0.0):
 def setcd__value_exists(v):
     """A label is valid when its numeric value is greater than zero."""
     val = setcd__safe_float(v, default=0.0)
-    return val > 0
+    return np.isfinite(val) and val > 0
 
 
 def setcd__safe_mean_of_valid(vals):
@@ -608,6 +628,9 @@ class SETCDSatDataset():
             msw = setcd__safe_float(row[self.col2idx["USA_WIND"]], 0.0)
             mslp = setcd__safe_float(row[self.col2idx["USA_PRES"]], 0.0)
             rmw = setcd__safe_float(row[self.col2idx["USA_RMW"]], 0.0)
+            # Group-one targets have no loss mask: retain complete valid targets only.
+            if not all(setcd__value_exists(v) for v in (msw, mslp, rmw)):
+                continue
 
             r34ne = setcd__safe_float(row[self.col2idx["USA_R34_NE"]], 0.0)
             r34se = setcd__safe_float(row[self.col2idx["USA_R34_SE"]], 0.0)
@@ -630,6 +653,11 @@ class SETCDSatDataset():
                 r34sw, r50sw, r64sw,
                 r34nw, r50nw, r64nw
             ]
+            labels = rotate_quadrant_labels(labels, filename)
+            (r34ne, r50ne, r64ne,
+             r34se, r50se, r64se,
+             r34sw, r50sw, r64sw,
+             r34nw, r50nw, r64nw) = labels
             mask = [int(setcd__value_exists(v)) for v in labels]
             mask = torch.tensor(mask, dtype=torch.long)
 
@@ -652,6 +680,9 @@ class SETCDSatDataset():
             his_msw = setcd__safe_float(his_row[self.col2idx["USA_WIND"]], 0.0)
             his_mslp = setcd__safe_float(his_row[self.col2idx["USA_PRES"]], 0.0)
             his_rmw = setcd__safe_float(his_row[self.col2idx["USA_RMW"]], 0.0)
+            # All three values enter historical ratios; reject invalid denominators.
+            if not all(setcd__value_exists(v) for v in (his_msw, his_mslp, his_rmw)):
+                continue
 
             his_r34ne = setcd__safe_float(his_row[self.col2idx["USA_R34_NE"]], 0.0)
             his_r34se = setcd__safe_float(his_row[self.col2idx["USA_R34_SE"]], 0.0)
@@ -678,7 +709,7 @@ class SETCDSatDataset():
             else:
                 his_level = setcd__msw_to_level(his_msw)
 
-            if his_r34 == 0 or his_rmw == 0 or his_r50 == 0:
+            if not all(setcd__value_exists(v) for v in (his_r34, his_r50)):
                 continue
             if his_rmw > his_r34:
                 continue

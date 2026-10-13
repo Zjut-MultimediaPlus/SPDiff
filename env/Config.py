@@ -27,6 +27,13 @@ epochs = int(os.environ.get('SPDIFF_EPOCHS', 300))
 batch_size = int(os.environ.get('SPDIFF_BATCH_SIZE', 48))
 device = os.environ.get('SPDIFF_DEVICE', 'cuda:0')
 num_workers = int(os.environ.get('SPDIFF_NUM_WORKERS', 4))
+# Optional validation uses forward losses, not slow diffusion sampling.
+use_validation = os.environ.get('SPDIFF_USE_VALIDATION', '0') == '1'
+validation_interval = int(os.environ.get('SPDIFF_VALIDATION_INTERVAL', 10))
+# Zero means all validation batches; positive values limit validation cost.
+validation_max_batches = int(os.environ.get('SPDIFF_VALIDATION_MAX_BATCHES', 0))
+if validation_interval < 1 or validation_max_batches < 0:
+    raise ValueError('Validation interval must be positive and max batches nonnegative.')
 model_output_dir = os.environ.get('SPDIFF_OUTPUT_DIR', str(REPO_ROOT / 'runs' / dataset_name))
 predict_model = os.environ.get('SPDIFF_CHECKPOINT', str(Path(model_output_dir) / f'epoch_{epochs}.pth'))
 save_fig_dir = str(Path(model_output_dir) / 'figs')
@@ -56,7 +63,7 @@ def validate_paths(training=True):
     if not training:
         required.append(predict_model)
     missing = [p for p in required if not Path(p).is_file()]
-    splits = [train_data_path, valid_data_path] if training else [test_data_path]
+    splits = ([train_data_path] + ([valid_data_path] if use_validation else [])) if training else [test_data_path]
     missing += [p for p in splits if not Path(p).is_dir() or not any(Path(p).glob('*.npy'))]
     if missing:
         raise FileNotFoundError('Missing resources or empty splits:\n' + '\n'.join(missing))
