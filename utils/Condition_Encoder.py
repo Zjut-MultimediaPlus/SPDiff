@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+import env.Config as config
 
 class vgg_enc(nn.Module):
     def __init__(self, Pre_Train):
@@ -16,12 +17,12 @@ class vgg_enc(nn.Module):
         return x
 
 class Shared_Network156(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels=4):
         super().__init__()
 
         self.relu = nn.ReLU()
 
-        self.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1)     # -> (64, 156, 156)
+        self.conv1 = nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1)     # -> (64, 156, 156)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)                    # -> (64, 78, 78)
 
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)   # -> (128, 78, 78)
@@ -84,6 +85,7 @@ class PRG_SALSTM8(nn.Module):
         # [B, 512, 4, 4]
         H = torch.zeros_like(x[0])
         C = torch.randn_like(x[0]) * 1e-6
+        memory = torch.zeros_like(H)
         for i in range(x.size(0)):
             a_xh = torch.sigmoid(self.conv10(torch.cat((H, x[i], en_1d), dim=1))) 
             ca_xh = C*a_xh
@@ -133,15 +135,16 @@ class PRG_SALSTM8(nn.Module):
 class MultiCondEnc(nn.Module):
     def __init__(self, ratio_num):
         super().__init__()
-        self.enc1 = Shared_Network156()
-        self.enc2 = Shared_Network156()
+        self.image_channels = config.image_channels
+        self.enc1 = Shared_Network156(self.image_channels)
+        self.enc2 = Shared_Network156(self.image_channels)
         self.ratio_num = ratio_num
         self.aux_fc = AuxEnc(ratio_num, 16)
         self.prg_fus = PRG_SALSTM8(in_channels=512, aux_num=ratio_num)
 
     def forward(self, x, pr):
-        f1 = self.enc1(x[:, :4]).unsqueeze(dim=1)      # b, 1, 512, 4, 4
-        f2 = self.enc1(x[:, 4:]).unsqueeze(dim=1)      # b, 1, 512, 4, 4
+        f1 = self.enc1(x[:, :self.image_channels]).unsqueeze(dim=1)
+        f2 = self.enc1(x[:, self.image_channels:]).unsqueeze(dim=1)
         tf = torch.cat([f1, f2], dim=1)          # b, 2, 512, 4, 4
         b, t, c, h, w = tf.size()
 
@@ -149,3 +152,4 @@ class MultiCondEnc(nn.Module):
         prgf = self.prg_fus(tf, auxFs)   # b, 512, 4, 4
 
         return prgf
+

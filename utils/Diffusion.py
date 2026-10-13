@@ -83,7 +83,7 @@ class MatchConcept(nn.Module):
         self.logit_scale = nn.Parameter(torch.tensor(float(logit_scale_init), dtype=torch.float32), requires_grad=True)
 
         self.cproj = nn.Linear(cfdim, vfdim)
-        data = torch.load(config.save_cep_dir)
+        data = torch.load(config.save_cep_dir, map_location="cpu", weights_only=True)
         concept_embs = data["concept_embs"].to(torch.float32)  # (concept_num, D)
         self.register_buffer("concept_embs", concept_embs)   # (C, cfdim)
 
@@ -97,7 +97,7 @@ class MatchConcept(nn.Module):
         self.last_weights  = None
 
     def load_concept_embs(self, pt_path: str, device=None):
-        data = torch.load(pt_path, map_location="cpu")
+        data = torch.load(pt_path, map_location="cpu", weights_only=True)
         concept_embs = data["concept_embs"].to(torch.float32)
 
         if device is None:
@@ -616,3 +616,4 @@ class SPDiff(nn.Module):
         x1 = normalize_img(x1)
         x2 = normalize_img(x2)
         return self.p_mask_conf_gather(x1, x2, x2_label_mask, t, *args, **kwargs)
+
