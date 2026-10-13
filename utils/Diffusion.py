@@ -544,7 +544,7 @@ class SPDiff(nn.Module):
             xgens = []
             xcepxs = []
             for i in range(config.mc_sample):
-                cep_x = torch.normal(cep_mu, cep_sigma).unsqueeze(1)
+                cep_x = (cep_mu + cep_sigma * torch.randn_like(cep_sigma)).unsqueeze(1)
                 xcepx = fuse_module(denoiseObj, cep_x)
                 x_gen = denoiseF(denoiseObj, c, t_emb, xcepx)
                 xgens.append(x_gen)
