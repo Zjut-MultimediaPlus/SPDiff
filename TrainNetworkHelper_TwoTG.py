@@ -69,7 +69,7 @@ class TrainerBase(nn.Module):
             raise ValueError("Please provide the total number of training epochs")
 
         self.valid_loader = valid_loader
-        if self.valid_loader is None:
+        if self.valid_loader is None and (config.use_validation or IFEarlyStopping):
             raise ValueError("Please provide valid_loader")
 
         self.train_loader = train_loader
@@ -244,10 +244,48 @@ class CondDiffusionTrainer_GroupGrad(TrainerBase):
             self.timesteps = kwargs["timesteps"]
         else:
             raise ValueError("diffusion must provide parameter: step")
+    def validate(self, model):
+        """Monitor equal-weight mean task loss without sampling or gradient weighting.
+
+        This is a stochastic diffusion-loss diagnostic, not generated-output MAE
+        or the GroupGrad-weighted training objective. Preserve training RNG state.
+        """
+        was_training = model.training
+        cuda_devices = [torch.device(self.device).index or 0] if torch.device(self.device).type == 'cuda' else []
+        total, count = 0.0, 0
+        model.eval()
+        try:
+            with torch.random.fork_rng(devices=cuda_devices), torch.no_grad():
+                torch.random.default_generator.manual_seed(0)
+                for device_index in cuda_devices:
+                    with torch.cuda.device(device_index):
+                        torch.cuda.manual_seed(0)
+                for batch, data in enumerate(self.valid_loader):
+                    if config.validation_max_batches and batch >= config.validation_max_batches:
+                        break
+                    current = data['k8_btemp'].to(self.device)
+                    previous = data['pxh_k8_btemp'].to(self.device)
+                    losses = model(
+                        data['group1_label'].to(self.device),
+                        data['group2_label'].to(self.device),
+                        data['group2_label_mask'].to(self.device),
+                        cond_visual=torch.cat([previous, current], dim=1),
+                        cond_ratio=data['pr'].to(self.device)
+                    )
+                    batch_size = current.shape[0]
+                    total += torch.stack(losses).mean().item() * batch_size
+                    count += batch_size
+        finally:
+            model.train(was_training)
+        if not count:
+            raise ValueError('Validation loader produced no samples.')
+        return total / count
+
     def forward(self, model, model_save_path, save_fig_dir):
         train_losses = []
         valid_losses = []
         for i in range(self.epoches):
+            model.train()
             train_batch_loss = 0
             train_loop = tqdm(enumerate(self.train_loader), total=len(self.train_loader))
             train_batch_num = 0
@@ -283,9 +321,17 @@ class CondDiffusionTrainer_GroupGrad(TrainerBase):
                 # train_loop.set_postfix(noise_loss=noise_loss.item(), prob_loss=prob_loss.item(), diffusion_loss=total_loss.item())
             train_losses.append(train_batch_loss / train_batch_num)
             print("Train Epoch = {} mean loss = {} ".format(i, train_batch_loss / train_batch_num))
+            if config.use_validation and ((i+1) % config.validation_interval == 0 or (i+1) == self.epoches):
+                valid_loss = self.validate(model)
+                valid_losses.append((i+1, valid_loss))
+                print(f'Validation epoch {i+1}: mean task diffusion loss = {valid_loss:.6f}')
             if (i+1) % config.save_model_iter == 0 or (i+1) == self.epoches:
                 self.save_model(model, model_save_path, i)
 
         Paint_fig(train_losses, valid_losses, save_fig_dir)
+        if valid_losses:
+            np.savetxt(os.path.join(save_fig_dir, 'validation_loss.csv'),
+                       np.asarray(valid_losses), delimiter=',',
+                       header='epoch,mean_task_diffusion_loss', comments='')
         return model
 

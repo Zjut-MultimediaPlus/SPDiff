@@ -41,18 +41,20 @@ if __name__ == '__main__':
     ).to(config.device)
 
     train_dataset = create_dataset(config.train_data_path)
-    valid_dataset = create_dataset(config.valid_data_path)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.batch_size,
         shuffle=True, num_workers=config.num_workers,
         pin_memory=True
     )
 
-    valid_dataloader = torch.utils.data.DataLoader(
-        valid_dataset, batch_size=config.batch_size,
-        shuffle=True, num_workers=config.num_workers,
-        pin_memory=True
-    )
+    valid_dataloader = None
+    if config.use_validation:
+        valid_dataset = create_dataset(config.valid_data_path)
+        valid_dataloader = torch.utils.data.DataLoader(
+            valid_dataset, batch_size=config.batch_size,
+            shuffle=False, num_workers=config.num_workers,
+            pin_memory=True
+        )
 
     optimizer = Adam(diffusion.parameters(), lr=5e-5)
 
