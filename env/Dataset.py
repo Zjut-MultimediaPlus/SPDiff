@@ -478,7 +478,7 @@ def setcd__parse_filename(filename):
         return None
 
     aug_tag = None
-    if parts[-1] in ["rotate45", "rotate90", "rotate135", "rotate180", "rotate270"]:
+    if parts[-1] in ("rotate90", "rotate180", "rotate270"):
         aug_tag = parts[-1]
         iso_time = parts[-2]
         year = parts[0]
