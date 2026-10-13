@@ -9,7 +9,7 @@ from utils.Diffusion import *
 from TrainNetworkHelper_TwoTG import *
 import matplotlib
 import random
-from env.Dataset import *
+from env.Dataset import create_dataset
 
 def setup_seed(seed):
     random.seed(seed)
@@ -22,6 +22,7 @@ def setup_seed(seed):
     torch.backends.cudnn.benchmark = False
 
 if __name__ == '__main__':
+    config.validate_paths(training=True)
     setup_seed(0)
     denoise_model = SPDenoiser(
         dim=64,
@@ -39,8 +40,8 @@ if __name__ == '__main__':
         loss_type='l1'
     ).to(config.device)
 
-    train_dataset = TCDataset_HisPR_TwoTG(config.train_k8_path)
-    valid_dataset = TCDataset_HisPR_TwoTG(config.valid_k8_path)
+    train_dataset = create_dataset(config.train_data_path)
+    valid_dataset = create_dataset(config.valid_data_path)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.batch_size,
         shuffle=True, num_workers=config.num_workers,
@@ -62,6 +63,8 @@ if __name__ == '__main__':
                                      device=config.device,
                                      timesteps=config.timesteps)
 
-    CDModel = Trainer.forward(diffusion, model_save_path=config.model_output_dir, save_fig_dir=config.model_output_dir)
+    CDModel = Trainer.forward(diffusion, model_save_path=config.model_output_dir, save_fig_dir=config.save_fig_dir)
+
+
 
 

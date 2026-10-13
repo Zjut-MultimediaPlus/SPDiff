@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim
 from torch import nn
 from tqdm import tqdm
-from env.Dataset import *
+from env.Dataset import create_dataset
 import random
 
 def compute_loss(y_est, y_true, mask):
@@ -26,8 +26,6 @@ def AllWeightGatherConf(gen_tca_all, gen_conf_all):
     gen_tca_all = gen_tca_all.reshape(S, B, -1)  # s, b, g*d
     confs = gen_conf_all.reshape(S, B, -1).sum(dim=-1)  # s, b, g, d---s, b, g*d---s, b
     conf_weight = F.softmax(confs, dim=0)  # s, b
-    # conf_weight = 1 - F.softmax(confs, dim=0)  # s, b
-    # conf_weight = torch.softmax(confs / 0.07, dim=0)  # (S,B)
     print("conf_weight idx0: ", conf_weight[:, 0])
     gen_tca = (conf_weight.unsqueeze(-1) * gen_tca_all).sum(dim=0).reshape(B, G, Q)  # b, g, d
     return gen_tca.reshape(B, -1)
@@ -56,11 +54,19 @@ def test_multiconf(model, dataset):
         "rmw": (5, 130)
     }
     group_vars = {
+        # Aggregate MAE of quadrant means, distinct from mean quadrant MAE.
         "r34": ["r34ne", "r34se", "r34sw", "r34nw"],
         "r50": ["r50ne", "r50se", "r50sw", "r50nw"],
         "r64": ["r64ne", "r64se", "r64sw", "r64nw"]
     }
     group_error = {k: 0.0 for k in group_vars}
+    if config.dataset_name == 'SETCD-Sat':
+        deter_var_ranges = {'msw': (35, 185), 'mslp': (872, 1011), 'rmw': (5, 300)}
+        gen_var_ranges = {
+            'r34ne': (5, 780), 'r34se': (5, 660), 'r34sw': (5, 660), 'r34nw': (5, 600),
+            'r50ne': (5, 300), 'r50se': (5, 270), 'r50sw': (5, 330), 'r50nw': (10, 360),
+            'r64ne': (5, 180), 'r64se': (5, 180), 'r64sw': (5, 180), 'r64nw': (5, 300),
+        }
     group_count = {k: 0 for k in group_vars}
     gen_total_error = {name: 0.0 for name in gen_var_names}
     deter_total_error = {name: 0.0 for name in deter_var_names}
@@ -177,13 +183,18 @@ def setup_seed(seed):
     torch.backends.cudnn.benchmark = False
 
 if __name__ == '__main__':
+    config.validate_paths(training=False)
     setup_seed(0)
-    test_dataset = TCDataset_HisPR_TwoTG(config.predict_k8_path)
+    test_dataset = create_dataset(config.test_data_path)
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset, batch_size=config.batch_size,
-        shuffle=True, num_workers=config.num_workers,
+        shuffle=False, num_workers=config.num_workers,
         pin_memory=True
     )
-    DDPM = torch.load(config.predict_model)
+    # The existing trainer saves whole model objects. Load only trusted checkpoints.
+    DDPM = torch.load(config.predict_model, map_location=config.device, weights_only=False)
+    DDPM = DDPM.to(config.device)
 
     test_multiconf(DDPM, test_dataloader)
+
+

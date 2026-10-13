@@ -267,10 +267,8 @@ class CondDiffusionTrainer_GroupGrad(TrainerBase):
                 loss_list = model(group1_label, group2_label, group2_label_mask, cond_visual=btemp, cond_ratio=pr)
                 shared_params = []
                 # Core network
-                # shared_params += list(model.denoise_fn.visual_cond_enc.parameters())
                 shared_params += list(model.denoise_fn.cond_enc.parameters())
                 shared_params += list(model.denoise_fn.time_mlp.parameters())
-                # total_loss = GroupGradOptLoss(loss_list, shared_params, model.loss_weight)
                 total_loss = GroupGradOptLoss(loss_list, shared_params)
 
                 train_batch_loss += total_loss.item()
@@ -285,8 +283,9 @@ class CondDiffusionTrainer_GroupGrad(TrainerBase):
                 # train_loop.set_postfix(noise_loss=noise_loss.item(), prob_loss=prob_loss.item(), diffusion_loss=total_loss.item())
             train_losses.append(train_batch_loss / train_batch_num)
             print("Train Epoch = {} mean loss = {} ".format(i, train_batch_loss / train_batch_num))
-            if (i+1) % config.save_model_iter == 0:
+            if (i+1) % config.save_model_iter == 0 or (i+1) == self.epoches:
                 self.save_model(model, model_save_path, i)
 
         Paint_fig(train_losses, valid_losses, save_fig_dir)
         return model
+
