@@ -4,7 +4,9 @@ This document explains how to download and prepare PDTC and SETCD-Sat for
 end-to-end SPDiff training. Detailed data preprocessing code and trained
 checkpoints will be released after the paper is accepted.
 
-**Baidu Netdisk share link:** ...
+**Baidu Netdisk share link:** 通过网盘分享的文件：SPDiff-Data-Resource
+链接: https://pan.baidu.com/s/1OHI7n0qT-6xirzNriwrdPg?pwd=3tsx 提取码: 3tsx 
+--来自百度网盘超级会员v1的分享
 
 ## Netdisk folder layout
 
