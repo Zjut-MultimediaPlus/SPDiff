@@ -1,15 +1,12 @@
 # SPDiff
 
-Code for **SPDiff: Semantic Proposal-guided Diffusion for Reliable Asymmetric Tropical Cyclone Estimation**, under review at KDD AI4S 2027. The repository provides dataset access, usage instructions, and code for end-to-end training and evaluation.
+Code for **SPDiff: Semantic Proposal-guided Diffusion for Reliable Asymmetric Tropical Cyclone Estimation**, under review at KDD AI4S 2027. The repository provides access to prepared datasets and instructions for training and evaluating SPDiff on PDTC and SETCD-Sat.
 
-SPDiff estimates maximum sustained wind, minimum sea-level pressure, radius of
-maximum wind, and quadrant-wise wind radii at 34, 50 and 64 knots. PDTC and SETCD-Sat
-share the same configuration, dataset entry point and model implementation.
+SPDiff estimates maximum sustained wind, minimum sea-level pressure, radius of maximum wind, and quadrant-wise wind radii at 34, 50 and 64 knots. PDTC and SETCD-Sat share the same configuration, dataset entry point, and model implementation.
 
 ## Installation
 
-Use a Python environment with compatible PyTorch and torchvision versions for
-your hardware. Install the runtime dependencies:
+Use a Python environment with compatible PyTorch and torchvision versions for your hardware. Install the runtime dependencies:
 
 ```bash
 python -m pip install torch torchvision numpy matplotlib tqdm einops
@@ -67,5 +64,5 @@ TrainNetworkHelper_TwoTG.py    # Training utilities
 Train_TwoTGCD_Conf.py          # Unified training entry point
 Test_TwoTGCD_Conf.py           # Unified evaluation entry point
 DATA_README.md                 # Dataset download instructions and directory
-README.md
-```
+README.md                      # Project overview, installation, training, and evaluation
+
