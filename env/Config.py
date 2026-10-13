@@ -23,7 +23,7 @@ nan_over_half_first_channel_path = str(metadata_root / 'nan_over_half_first_chan
 ibtracs_age_hours_path = str(metadata_root / 'ibtracs_age_hours.pkl')
 save_cep_dir = os.environ.get('SPDIFF_CONCEPT_EMBS', str(DATA_ROOT / 'concept_embs_clip.pt'))
 image_channels = 4 if dataset_name == 'PDTC' else 1
-epochs = int(os.environ.get('SPDIFF_EPOCHS', 300))
+epochs = int(os.environ.get('SPDIFF_EPOCHS', 200))
 batch_size = int(os.environ.get('SPDIFF_BATCH_SIZE', 48))
 device = os.environ.get('SPDIFF_DEVICE', 'cuda:0')
 num_workers = int(os.environ.get('SPDIFF_NUM_WORKERS', 4))
@@ -55,15 +55,21 @@ best_loss = 0.005
 save_model_iter = 20
 data_format = 'npy'
 
-def validate_paths(training=True):
+def validate_paths(training=True, split=None):
     metadata = ([labels_path, k8_sta_path] if dataset_name == 'PDTC' else
                 [ibtracs_row_dict_path, ibtracs_columns_path, ibtracs_age_hours_path,
                  nan_over_half_first_channel_path])
     required = metadata + [save_cep_dir]
-    if not training:
+    if split is None and not training:
         required.append(predict_model)
     missing = [p for p in required if not Path(p).is_file()]
-    splits = ([train_data_path] + ([valid_data_path] if use_validation else [])) if training else [test_data_path]
+    if split is not None:
+        # Data inspection requires only the chosen split, not a model checkpoint.
+        if split not in ('train', 'valid', 'test'):
+            raise ValueError('split must be train, valid or test')
+        splits = [str(samples_root / split)]
+    else:
+        splits = ([train_data_path] + ([valid_data_path] if use_validation else [])) if training else [test_data_path]
     missing += [p for p in splits if not Path(p).is_dir() or not any(Path(p).glob('*.npy'))]
     if missing:
         raise FileNotFoundError('Missing resources or empty splits:\n' + '\n'.join(missing))
