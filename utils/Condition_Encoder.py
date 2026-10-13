@@ -136,15 +136,15 @@ class MultiCondEnc(nn.Module):
     def __init__(self, ratio_num):
         super().__init__()
         self.image_channels = config.image_channels
+        # The same image encoder weights are used for both observation times.
         self.enc1 = Shared_Network156(self.image_channels)
-        self.enc2 = Shared_Network156(self.image_channels)
         self.ratio_num = ratio_num
         self.aux_fc = AuxEnc(ratio_num, 16)
         self.prg_fus = PRG_SALSTM8(in_channels=512, aux_num=ratio_num)
 
     def forward(self, x, pr):
         f1 = self.enc1(x[:, :self.image_channels]).unsqueeze(dim=1)
-        f2 = self.enc2(x[:, self.image_channels:]).unsqueeze(dim=1)
+        f2 = self.enc1(x[:, self.image_channels:]).unsqueeze(dim=1)
         tf = torch.cat([f1, f2], dim=1)          # b, 2, 512, 4, 4
         b, t, c, h, w = tf.size()
 
