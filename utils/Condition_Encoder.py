@@ -144,7 +144,7 @@ class MultiCondEnc(nn.Module):
 
     def forward(self, x, pr):
         f1 = self.enc1(x[:, :self.image_channels]).unsqueeze(dim=1)
-        f2 = self.enc1(x[:, self.image_channels:]).unsqueeze(dim=1)
+        f2 = self.enc2(x[:, self.image_channels:]).unsqueeze(dim=1)
         tf = torch.cat([f1, f2], dim=1)          # b, 2, 512, 4, 4
         b, t, c, h, w = tf.size()
 
