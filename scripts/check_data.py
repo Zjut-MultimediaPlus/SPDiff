@@ -10,11 +10,9 @@ def main():
     parser.add_argument('--split', choices=('train', 'valid', 'test'), default='train')
     parser.add_argument('--load-sample', action='store_true')
     args = parser.parse_args()
-    config.validate_paths(training=True)
+    config.validate_paths(split=args.split)
     print(f'Dataset: {config.dataset_name}; data root: {config.DATA_ROOT}')
     path = config.samples_root / args.split
-    if not path.is_dir() or not any(path.glob('*.npy')):
-        raise FileNotFoundError(f'Missing or empty split: {path}')
     if args.load_sample:
         from env.Dataset import create_dataset
         data = create_dataset(str(path))
