@@ -177,7 +177,7 @@ class PDTCDataset():
             his_r64ne, his_r64se, his_r64sw, his_r64nw = \
                 self.labels_dic[his_dic_index][4:]
 
-            if his_r34 == 0 or his_rmw == 0 or his_r50 == 0:
+            if his_r34 == 0 or his_rmw == 0 or his_r50 == 0 or his_msw == 0:
                 continue
             if his_rmw > his_r34:
                 continue
